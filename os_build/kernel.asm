@@ -35,7 +35,7 @@ main_loop:
     jmp main_loop
 
 draw_image:
-    push ds          
+    push ds            
     mov ax, 0x1000
     mov ds, ax   
     mov ax, 0xA000
@@ -48,24 +48,25 @@ draw_image:
     ret
 
 %macro DRAW_CHAR_AT 3
-    mov al, %1
-    mov bx, %2
-    mov dx, %3
+    push word %1  
+    push word %2 
+    push word %3  
     call .draw_single_char
+    add sp, 6     
 %endmacro
 
 draw_text:
-    DRAW_CHAR_AT 'g', 10, 10
-    DRAW_CHAR_AT 'o', 18, 10
-    DRAW_CHAR_AT 's', 26, 10
-    DRAW_CHAR_AT 'p', 34, 10
-    DRAW_CHAR_AT 'e', 42, 10
-    DRAW_CHAR_AT 'l', 50, 10
-    DRAW_CHAR_AT 'o', 58, 10
-    DRAW_CHAR_AT 's', 66, 10
+    DRAW_CHAR_AT 0x05D4, 10, 10  
+    DRAW_CHAR_AT 0x05E8, 18, 10  
+    DRAW_CHAR_AT 0x05D5, 26, 10  
+    DRAW_CHAR_AT 0x05E9, 34, 10  
+    DRAW_CHAR_AT 0x05D1, 42, 10  
+    DRAW_CHAR_AT 0x05D4, 50, 10  
     ret
 
 .draw_single_char:
+    push bp
+    mov bp, sp
     push ax
     push bx
     push cx
@@ -74,51 +75,53 @@ draw_text:
     push di
     push es
     push ds
-    push bp
 
-    mov ax, 0x1130
-    mov bx, 0x0600
-    int 0x10
+    mov ax, [bp + 8]    
+    sub ax, 0x5d0
+    mov cx, 8
+    mul cx
+    
+    mov si, font_start
+    add si, ax
 
+    mov ax, cs
+    mov ds, ax         
     mov ax, 0xA000
-    mov es, ax
+    mov es, ax         
 
-    sub al, 32
-    xor ah, ah
-    shl ax, 3
-    add bp, ax     
+    mov bx, [bp + 6]    
+    mov dx, [bp + 4]   
 
-    mov cx, 8      
+    mov cx, 8          
 .row_loop:
     push cx
-    mov al, [es:bp] 
-    mov cx, 8
+    mov al, [ds:si]   
+    mov cx, 8          
 .bit_loop:
-    push cx
-    test al, 0x80
+    push cx           
+    test al, 0x80       
     jz .no_pixel
     
     push ax
     mov ax, dx
-    mov di, 320
-    mul di
-    add ax, bx
+    imul ax, 320        
+    add ax, bx          
     mov di, ax
-    mov [es:di], byte 15
+    mov [es:di], byte 15 
     pop ax
+
 .no_pixel:
-    shl al, 1
-    inc bx
-    pop cx
+    shl al, 1           
+    inc bx          
+    pop cx              
     loop .bit_loop
     
-    sub bx, 8
-    inc dx
-    inc bp   
-    pop cx
+    sub bx, 8          
+    inc dx            
+    inc si             
+    pop cx              
     loop .row_loop
 
-    pop bp
     pop ds
     pop es
     pop di
@@ -127,6 +130,7 @@ draw_text:
     pop cx
     pop bx
     pop ax
+    pop bp
     ret
 
 apply_palette:
@@ -184,3 +188,7 @@ data_start db 0
 align 2
 image_data:
     incbin "herev.bin"
+
+align 4
+font_start:
+    incbin "font.bin"
