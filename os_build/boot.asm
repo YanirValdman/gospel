@@ -1,35 +1,11 @@
 [bits 16]
 [org 0x7C00]
 
-KERNEL_SEGMENTS equ 200
+KERNEL_LOAD_SEG equ 0x1000
+KERNEL_LBA      equ 1
+KERNEL_SECTORS  equ 126
 
 start:
-jmp short main
-nop
-
-OEMName db "OSBOOT  "
-BytesPerSector dw 512
-SectorsPerCluster db 1
-ReservedSectors dw 1
-NumberOfFATs db 2
-RootEntries dw 224
-TotalSectors dw 2880
-MediaDescriptor db 0xF0
-SectorsPerFAT dw 9
-SectorsPerTrack dw 18
-Heads dw 2
-HiddenSectors dd 0
-TotalSectorsBig dd 0
-DriveNumber db 0
-Reserved db 0
-ExtendedSignature db 0x29
-SerialNumber dd 0x67676767
-VolumeLabel db "MY OS      "
-FileSystem db "FAT12   "
-
-main:
-    mov [boot_drive], dl
-
     cli
     xor ax, ax
     mov ds, ax
@@ -38,66 +14,90 @@ main:
     mov sp, 0x7C00
     sti
 
-    mov ax,0x1000
-    mov es,ax
-    mov bx,0
+    mov [boot_drive], dl
 
-    mov byte [track],0
-    mov byte [head],0
-    mov byte [sector],2
-    mov word [count],132
 
-next_sector:
+enable_a20:
+    in al, 0x92
+    or al, 00000010b
+    out 0x92, al
+    mov ax, 0x0013
+    int 0x10
 
-    cmp word [count],0
-    je done
+load_kernel:
+    mov si, dap
+    mov ah, 0x42
+    mov dl, [boot_drive]
+    int 0x13
 
-    mov ah,2
-    mov al,1
-    mov ch,[track]
-    mov cl,[sector]
-    mov dh,[head]
-    mov dl,[boot_drive]
-    int 13h
-    jc error
+    jc disk_error
+    cli
+    lgdt [gdt_descriptor]
 
-    add bx,512
-    jnc .no_wrap
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
 
-    mov ax,es
-    add ax,0x1000
-    mov es,ax
+    jmp 0x08:protected_mode
 
-    .no_wrap:
+dap:
 
-        dec word [count]
+    db 0x10
+    db 0
+    dw KERNEL_SECTORS
+    dw 0x0000
+    dw KERNEL_LOAD_SEG
 
-    inc byte [sector]
-    cmp byte [sector],19
-    jne next_sector
+    dq KERNEL_LBA
 
-    mov byte [sector],1
+[bits 32]
 
-    inc byte [head]
-    cmp byte [head],2
-    jne next_sector
+protected_mode:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    mov esp, 0x90000
+    cld
+    jmp 0x10000
 
-    mov byte [head],0
-    inc byte [track]
-    jmp next_sector
-
-done:
-    jmp 0x1000:0
-
-error:
+disk_error:
+    cli
+.error:
     hlt
-    jmp error
+    jmp .error
+
+[bits 16]
+
+gdt_start:
+    dq 0
+
+gdt_code:
+
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 10011010b
+    db 11001111b
+    db 0
+
+gdt_data:
+
+    dw 0xFFFF
+    dw 0
+    db 0
+    db 10010010b
+    db 11001111b
+    db 0
+
+gdt_end:
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
 
 boot_drive db 0
-track db 0
-head db 0
-sector db 2
-count dw 0
-
 times 510-($-$$) db 0
 dw 0xAA55
