@@ -1,136 +1,100 @@
-[bits 16]
-[org 0]
-
-jmp init
-
-init:
-    cli
-    mov ax, 0x1000
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov sp, 0xFFFE
-    sti
-
-    mov ax, 0x0013
-    int 0x10
-
+[bits 32]
+[org 0x10000]
+kernel_start:
+    mov ax,0x10
+    mov ds,ax
+    mov es,ax
+    mov ss,ax
+    mov esp,0x90000
+    cld
     call apply_palette
     call draw_image
     call draw_text
 
-main_loop:
-    mov ah, 0
-    int 0x16
-    cmp al, '*'
-    jne main_loop
-
-    inc byte [data_start]
-    cmp byte [data_start], 4
-    jl .ok
-    mov byte [data_start], 0
-
-.ok:
-    call apply_palette
-    jmp main_loop
-
+hang:
+    hlt
+    jmp hang
 draw_image:
-    push ds            
-    mov ax, 0x1000
-    mov ds, ax   
-    mov ax, 0xA000
-    mov es, ax
-    mov si, image_data
-    xor di, di
-    mov cx, 32000
-    rep movsw
-    pop ds
+
+    mov esi,image_data
+    mov edi,0xA0000
+    mov ecx,16000
+    rep movsd
     ret
 
 %macro DRAW_CHAR_AT 3
-    push word %1  
-    push word %2 
-    push word %3  
-    call .draw_single_char
-    add sp, 6     
+    push dword %1
+    push dword %2
+    push dword %3
+    call draw_char
+    add esp,12
 %endmacro
 
 draw_text:
-    DRAW_CHAR_AT 0x05D4, 10, 10  
-    DRAW_CHAR_AT 0x05E8, 18, 10  
-    DRAW_CHAR_AT 0x05D5, 26, 10  
-    DRAW_CHAR_AT 0x05E9, 34, 10  
-    DRAW_CHAR_AT 0x05D1, 42, 10  
-    DRAW_CHAR_AT 0x05D4, 50, 10  
+
+    DRAW_CHAR_AT 0x5D4,10,10
+    DRAW_CHAR_AT 0x5E8,18,10
+    DRAW_CHAR_AT 0x5D5,26,10
+    DRAW_CHAR_AT 0x5E9,34,10
+    DRAW_CHAR_AT 0x5D1,42,10
+    DRAW_CHAR_AT 0x5D4,50,10
+
     ret
+draw_char:
 
-.draw_single_char:
-    push bp
-    mov bp, sp
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    push di
-    push es
-    push ds
+    push ebp
+    mov ebp,esp
 
-    mov ax, [bp + 8]    
-    sub ax, 0x5d0
-    mov cx, 8
-    mul cx
-    
-    mov si, font_start
-    add si, ax
 
-    mov ax, cs
-    mov ds, ax         
-    mov ax, 0xA000
-    mov es, ax         
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
 
-    mov bx, [bp + 6]    
-    mov dx, [bp + 4]   
+    mov eax,[ebp+16]
+    sub eax,0x5D0
+    shl eax,3
+    mov esi,font_start
+    add esi,eax
+    mov ebx,[ebp+12]
+    mov edx,[ebp+8]    
+    mov edi,0xA0000
+    mov ecx,8          
 
-    mov cx, 8          
-.row_loop:
-    push cx
-    mov al, [ds:si]   
-    mov cx, 8          
-.bit_loop:
-    push cx           
-    test al, 0x80       
-    jz .no_pixel
-    
-    push ax
-    mov ax, dx
-    imul ax, 320        
-    add ax, bx          
-    mov di, ax
-    mov [es:di], byte 15 
-    pop ax
-
-.no_pixel:
-    shl al, 1           
-    inc bx          
-    pop cx              
-    loop .bit_loop
-    
-    sub bx, 8          
-    inc dx            
-    inc si             
-    pop cx              
-    loop .row_loop
-
-    pop ds
-    pop es
-    pop di
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    pop bp
+row_loop:
+    push ecx
+    mov al,[esi]
+    mov ecx,8
+column_loop:
+    test al,80h
+    jz no_pixel
+    push eax
+    push edx
+    mov eax,edx
+    imul eax,320
+    add eax,ebx
+    add eax,edi
+    mov byte [eax],15
+    pop edx
+    pop eax
+no_pixel:
+    shl al,1
+    inc ebx
+    loop column_loop
+    sub ebx,8
+    inc edx
+    inc esi
+    pop ecx
+    loop row_loop
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    pop ebp
     ret
 
 apply_palette:
@@ -140,13 +104,6 @@ apply_palette:
     mov al, 0x88
     out dx, al
     inc dx
-    mov al, [data_start]
-    cmp al, 1
-    je .blood
-    cmp al, 2
-    je .grass
-    cmp al, 3
-    je .sea
 .default:
     mov al, 40
     out dx, al
@@ -155,40 +112,19 @@ apply_palette:
     mov al, 50
     out dx, al
     jmp .done
-.blood:
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    xor al, al
-    out dx, al
-    jmp .done
-.grass:
-    xor al, al
-    out dx, al
-    mov al, 63
-    out dx, al
-    xor al, al
-    out dx, al
-    jmp .done
-.sea:
-    xor al, al
-    out dx, al
-    xor al, al
-    out dx, al
-    mov al, 63
-    out dx, al
+
 .done:
     pop dx
     pop ax
     ret
-
 data_start db 0
-
-align 2
+align 4
 image_data:
+
     incbin "herev.bin"
 
 align 4
+
 font_start:
+
     incbin "font.bin"
