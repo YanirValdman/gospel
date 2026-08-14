@@ -19,8 +19,62 @@ kernel_start:
     sti
 
 hang:
+    call process_command
     hlt
     jmp hang
+
+process_command:
+    cmp dword [command_ready],1
+    jne .done
+
+    mov dword [command_ready],0
+
+    mov esi,command_buffer
+
+    mov ax,[esi]
+    cmp ax,0x05E2
+    jne .unknown
+
+    mov ax,[esi+2]
+    cmp ax,0x05D6
+    jne .unknown
+
+    mov ax,[esi+4]
+    cmp ax,0x05E8
+    jne .unknown
+
+    mov ax,[esi+6]
+    cmp ax,0x05D4
+    jne .unknown
+
+    mov ax,[esi+8]
+    test ax,ax
+    jnz .unknown
+
+    call command_help
+    jmp .done
+
+.unknown:
+    mov eax,0x05D0
+    call terminal_put_char
+
+.done:
+    ret
+
+command_help:
+    mov eax,0x05E2
+    call terminal_put_char
+
+    mov eax,0x05D6
+    call terminal_put_char
+
+    mov eax,0x05E8
+    call terminal_put_char
+
+    mov eax,0x05D4
+    call terminal_put_char
+
+    ret
 
 draw_image:
     mov esi,image_data
