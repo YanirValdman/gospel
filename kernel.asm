@@ -62,41 +62,32 @@ process_command:
     ret
 
 command_help:
-    mov eax,0x05E2
+    mov eax,0x05E2 
     call terminal_put_char
 
-    mov eax,0x05D6
+    mov eax,0x05D6    
     call terminal_put_char
 
-    mov eax,0x05E8
+    mov eax,0x05E8   
     call terminal_put_char
 
-    mov eax,0x05D4
+    mov eax,0x05EA   
     call terminal_put_char
 
-    mov eax,0x20
+    mov eax,0x20   
     call terminal_put_char
 
-    mov eax,0x05E4
+    mov eax,0x05D4    
     call terminal_put_char
 
-    mov eax,0x05E7
+    mov eax,0x05E9    
     call terminal_put_char
 
-    mov eax,0x05D5
-    call terminal_put_char
-
-    mov eax,0x05D3
-    call terminal_put_char
-
-    mov eax,0x05D5
-    call terminal_put_char
-
-    mov eax,0x05EA
+    mov eax,0x05DD    
     call terminal_put_char
 
     ret
-    
+
 draw_image:
     mov esi,image_data
     mov edi,0xA0000
