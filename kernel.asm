@@ -74,8 +74,29 @@ command_help:
     mov eax,0x05D4
     call terminal_put_char
 
-    ret
+    mov eax,0x20
+    call terminal_put_char
 
+    mov eax,0x05E4
+    call terminal_put_char
+
+    mov eax,0x05E7
+    call terminal_put_char
+
+    mov eax,0x05D5
+    call terminal_put_char
+
+    mov eax,0x05D3
+    call terminal_put_char
+
+    mov eax,0x05D5
+    call terminal_put_char
+
+    mov eax,0x05EA
+    call terminal_put_char
+
+    ret
+    
 draw_image:
     mov esi,image_data
     mov edi,0xA0000
