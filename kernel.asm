@@ -33,30 +33,57 @@ process_command:
 
     mov ax,[esi]
     cmp ax,0x05E2
-    jne .unknown
+    jne .check_about
 
     mov ax,[esi+2]
     cmp ax,0x05D6
-    jne .unknown
+    jne .check_about
 
     mov ax,[esi+4]
     cmp ax,0x05E8
-    jne .unknown
+    jne .check_about
 
     mov ax,[esi+6]
     cmp ax,0x05D4
-    jne .unknown
+    jne .check_about
 
     mov ax,[esi+8]
     test ax,ax
-    jnz .unknown
+    jnz .check_about
 
     call command_help
     jmp .done
 
+.check_about:
+    mov ax,[esi]
+    cmp ax,0x05D0
+    jne .unknown
+
+    mov ax,[esi+2]
+    cmp ax,0x05D5
+    jne .unknown
+
+    mov ax,[esi+4]
+    cmp ax,0x05D3
+    jne .unknown
+
+    mov ax,[esi+6]
+    cmp ax,0x05D5
+    jne .unknown
+
+    mov ax,[esi+8]
+    cmp ax,0x05EA
+    jne .unknown
+
+    mov ax,[esi+10]
+    test ax,ax
+    jnz .unknown
+
+    call command_about
+    jmp .done
+
 .unknown:
-    mov eax,0x05D0
-    call terminal_put_char
+    ret
 
 .done:
     ret
@@ -84,6 +111,96 @@ command_help:
     call terminal_put_char
 
     mov eax,0x05DD    
+    call terminal_put_char
+
+    ret
+
+command_about:
+    mov eax,0x05D4
+    call terminal_put_char
+
+    mov eax,0x05D1
+    call terminal_put_char
+
+    mov eax,0x05E9
+    call terminal_put_char
+
+    mov eax,0x05D5
+    call terminal_put_char
+
+    mov eax,0x05E8
+    call terminal_put_char
+
+    mov eax,0x05D4
+    call terminal_put_char
+
+    mov eax,0x000A
+    call terminal_put_char
+
+    mov eax,0x05E0
+    call terminal_put_char
+
+    mov eax,0x05D5
+    call terminal_put_char
+
+    mov eax,0x05E6
+    call terminal_put_char
+
+    mov eax,0x05E8
+    call terminal_put_char
+
+    mov eax,0x20
+    call terminal_put_char
+
+    mov eax,0x05E2
+    call terminal_put_char
+
+    mov eax,0x05DC
+    call terminal_put_char
+
+    mov eax,0x20
+    call terminal_put_char
+
+    mov eax,0x05D9
+    call terminal_put_char
+
+    mov eax,0x05D3
+    call terminal_put_char
+
+    mov eax,0x05D9
+    call terminal_put_char
+
+    mov eax,0x20
+    call terminal_put_char
+
+    mov eax,0x05D9
+    call terminal_put_char
+
+    mov eax,0x05E0
+    call terminal_put_char
+
+    mov eax,0x05D9
+    call terminal_put_char
+
+    mov eax,0x05E8
+    call terminal_put_char
+
+    mov eax,0x20
+    call terminal_put_char
+
+    mov eax,0x05D5
+    call terminal_put_char
+
+    mov eax,0x05DC
+    call terminal_put_char
+
+    mov eax,0x05D3
+    call terminal_put_char
+
+    mov eax,0x05DE
+    call terminal_put_char
+
+    mov eax,0x05DF
     call terminal_put_char
 
     ret

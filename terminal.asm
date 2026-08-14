@@ -28,6 +28,7 @@ title_text:
     dw 0x05D4
     dw 0
 
+
 command_ready:
     dd 0
 
@@ -68,6 +69,10 @@ draw_hebrew:
     call draw_char
     add esp,12
 
+    sub ebx,8
+    add esi,2
+    jmp .next
+
 .space:
     sub ebx,8
     add esi,2
@@ -79,8 +84,6 @@ draw_hebrew:
     pop ebx
     pop eax
     ret
-
-
 
 
 terminal_put_char:
@@ -125,8 +128,23 @@ terminal_put_char:
     mov [edi],ax
     mov word [edi+2],0
 
-    sub dword [terminal_cursor_x],8
+    cmp ax,0x000A
+    je .newline
 
+    sub dword [terminal_cursor_x],8
+    call redraw_terminal
+    jmp .done
+
+.newline:
+    mov dword [terminal_cursor_x],TERMINAL_RIGHT
+    add dword [terminal_cursor_y],8
+
+    cmp dword [terminal_cursor_y],TERMINAL_TOP+TERMINAL_HEIGHT
+    jb .redraw
+
+    mov dword [terminal_cursor_y],TERMINAL_TOP
+
+.redraw:
     call redraw_terminal
 
 .done:
@@ -169,8 +187,6 @@ redraw_terminal:
     cmp edx,eax
     jb .clear_rows
 
-
-    ; Draw terminal text
     mov esi,terminal_text
     mov ebx,TERMINAL_RIGHT
     mov edx,TERMINAL_TOP
@@ -180,6 +196,9 @@ redraw_terminal:
 
     test eax,eax
     jz .done
+
+    cmp eax,0x000A
+    je .newline
 
     cmp eax,0x20
     je .space
@@ -206,6 +225,16 @@ redraw_terminal:
     add esi,2
     jmp .next
 
+.newline:
+    mov ebx,TERMINAL_RIGHT
+    add edx,8
+
+    cmp edx,TERMINAL_TOP+TERMINAL_HEIGHT
+    jae .done
+
+    add esi,2
+    jmp .next
+
 .done:
     pop edi
     pop esi
@@ -214,6 +243,7 @@ redraw_terminal:
     pop ebx
     pop eax
     ret
+
 
 remove_last_char:
     push eax
@@ -288,7 +318,6 @@ terminal_recalculate_cursor:
 
     mov [terminal_cursor_x],ebx
 
-    ; EAX = line number
     mov eax,ecx
     xor edx,edx
     mov ebx,36
@@ -429,6 +458,7 @@ draw_char:
     pop eax
     pop ebp
     ret
+
 
 align 4
 
