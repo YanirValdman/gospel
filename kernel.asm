@@ -22,14 +22,12 @@ hang:
     hlt
     jmp hang
 
-
 draw_image:
     mov esi,image_data
     mov edi,0xA0000
     mov ecx,16000
     rep movsd
     ret
-
 
 apply_palette:
     push ax
@@ -53,7 +51,6 @@ apply_palette:
     pop dx
     pop ax
     ret
-
 
 idt_init:
     mov edi,idt
@@ -89,7 +86,6 @@ idt_init:
 
     ret
 
-
 default_interrupt_handler:
     pusha
 
@@ -98,7 +94,6 @@ default_interrupt_handler:
 
     popa
     iretd
-
 
 pic_init:
     mov al,0x11
@@ -129,7 +124,6 @@ pic_init:
 
     ret
 
-
 keyboard_handler:
     pusha
 
@@ -147,9 +141,7 @@ keyboard_handler:
     popa
     iretd
 
-
 keyboard_translate:
-
     cmp al,0x10
     je .q
 
@@ -240,15 +232,16 @@ keyboard_translate:
     cmp al,0x0E
     je .backspace
 
-    ret
+    cmp al,0x1C
+    je .enter
 
+    ret
 
 .q:
     ret
 
 .w:
     ret
-
 
 .e:
     mov eax,0x5E7
@@ -358,60 +351,22 @@ keyboard_translate:
     mov eax,0x20
     jmp .append
 
-
 .backspace:
     call remove_last_char
     ret
 
+.enter:
+    call terminal_submit_command
+    ret
 
 .append:
     call terminal_put_char
     ret
 
-
-remove_last_char:
-    push eax
-    push edi
-
-    mov edi,terminal_text
-
-.find_end:
-    mov ax,[edi]
-
-    test ax,ax
-    jz .found_end
-
-    add edi,2
-
-    cmp edi,terminal_text_end
-    jb .find_end
-
-    jmp .done
-
-
-.found_end:
-    cmp edi,terminal_text
-    je .done
-
-    sub edi,2
-
-    mov word [edi],0
-
-    call terminal_recalculate_cursor
-    call redraw_terminal
-
-
-.done:
-    pop edi
-    pop eax
-    ret
-
-
 align 4
 
 image_data:
     incbin "herev.bin"
-
 
 align 8
 
@@ -420,11 +375,9 @@ idt:
 
 idt_end:
 
-
 idt_descriptor:
     dw idt_end - idt - 1
     dd idt
-
 
 %include "terminal.asm"
 %include "ata.asm"

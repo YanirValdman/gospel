@@ -28,6 +28,14 @@ title_text:
     dw 0x05D4
     dw 0
 
+command_ready:
+    dd 0
+
+command_buffer:
+    times 128 dw 0
+
+command_buffer_end:
+
 
 terminal_text:
     times 128 dw 0
@@ -71,6 +79,8 @@ draw_hebrew:
     pop ebx
     pop eax
     ret
+
+
 
 
 terminal_put_char:
@@ -159,11 +169,13 @@ redraw_terminal:
     cmp edx,eax
     jb .clear_rows
 
+
+    ; Draw terminal text
     mov esi,terminal_text
     mov ebx,TERMINAL_RIGHT
     mov edx,TERMINAL_TOP
 
-.draw_text:
+.next:
     movzx eax,word [esi]
 
     test eax,eax
@@ -175,16 +187,14 @@ redraw_terminal:
     push edx
     push ebx
     push eax
-
     call draw_char
-
     add esp,12
 
 .space:
     sub ebx,8
 
     cmp ebx,TERMINAL_LEFT+8
-    jae .next_char
+    jae .continue
 
     mov ebx,TERMINAL_RIGHT
     add edx,8
@@ -192,9 +202,9 @@ redraw_terminal:
     cmp edx,TERMINAL_TOP+TERMINAL_HEIGHT
     jae .done
 
-.next_char:
+.continue:
     add esi,2
-    jmp .draw_text
+    jmp .next
 
 .done:
     pop edi
@@ -204,6 +214,151 @@ redraw_terminal:
     pop ebx
     pop eax
     ret
+
+remove_last_char:
+    push eax
+    push edi
+
+    mov edi,terminal_text
+
+.find_end:
+    mov ax,[edi]
+
+    test ax,ax
+    jz .found_end
+
+    add edi,2
+
+    cmp edi,terminal_text_end
+    jb .find_end
+
+    jmp .done
+
+.found_end:
+    cmp edi,terminal_text
+    je .done
+
+    sub edi,2
+
+    mov word [edi],0
+
+    call terminal_recalculate_cursor
+    call redraw_terminal
+
+.done:
+    pop edi
+    pop eax
+    ret
+
+
+terminal_recalculate_cursor:
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+
+    mov esi,terminal_text
+    xor ecx,ecx
+
+.count:
+    mov ax,[esi]
+
+    test ax,ax
+    jz .calculate
+
+    inc ecx
+    add esi,2
+
+    cmp esi,terminal_text_end
+    jb .count
+
+.calculate:
+
+    mov eax,ecx
+    xor edx,edx
+    mov ebx,36
+    div ebx
+
+    mov eax,edx
+    shl eax,3
+
+    mov ebx,TERMINAL_RIGHT
+    sub ebx,eax
+
+    mov [terminal_cursor_x],ebx
+
+    ; EAX = line number
+    mov eax,ecx
+    xor edx,edx
+    mov ebx,36
+    div ebx
+
+    shl eax,3
+    add eax,TERMINAL_TOP
+
+    mov [terminal_cursor_y],eax
+
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+
+
+terminal_submit_command:
+    push eax
+    push esi
+    push edi
+    push ecx
+
+    mov esi,terminal_text
+    mov edi,command_buffer
+
+.copy:
+    mov ax,[esi]
+
+    test ax,ax
+    jz .finished
+
+    mov [edi],ax
+
+    add esi,2
+    add edi,2
+
+    jmp .copy
+
+.finished:
+    mov word [edi],0
+
+    mov dword [command_ready],1
+
+    mov esi,terminal_text
+    mov ecx,128
+
+.clear:
+    mov word [esi],0
+    add esi,2
+    loop .clear
+
+    mov dword [terminal_cursor_x],TERMINAL_RIGHT
+    add dword [terminal_cursor_y],8
+
+    cmp dword [terminal_cursor_y],TERMINAL_TOP+TERMINAL_HEIGHT
+    jb .redraw
+
+    mov dword [terminal_cursor_y],TERMINAL_TOP
+
+.redraw:
+    call redraw_terminal
+
+    pop ecx
+    pop edi
+    pop esi
+    pop eax
+    ret
+
 
 draw_char:
     push ebp
@@ -217,6 +372,7 @@ draw_char:
     push edi
 
     mov eax,[ebp+8]
+
     sub eax,0x5D0
     shl eax,3
 
@@ -274,67 +430,7 @@ draw_char:
     pop ebp
     ret
 
-terminal_recalculate_cursor:
-    push eax
-    push ebx
-    push ecx
-    push edx
-    push esi
-
-    mov esi,terminal_text
-    xor ecx,ecx
-
-.count:
-    mov ax,[esi]
-
-    test ax,ax
-    jz .calculate
-
-    inc ecx
-    add esi,2
-
-    cmp esi,terminal_text_end
-    jb .count
-
-.calculate:
-    mov eax,TERMINAL_RIGHT
-    sub eax,TERMINAL_LEFT
-    sub eax,8
-
-    xor edx,edx
-    mov ebx,eax
-
-    mov eax,ecx
-    xor edx,edx
-
-    mov ebx,36
-    div ebx
-
-    mov eax,edx
-    shl eax,3
-    mov ebx,TERMINAL_RIGHT
-    sub ebx,eax
-
-    mov [terminal_cursor_x],ebx
-
-    mov eax,ecx
-    xor edx,edx
-    mov ebx,36
-    div ebx
-
-    shl eax,3
-    add eax,TERMINAL_TOP
-
-    mov [terminal_cursor_y],eax
-
-    pop esi
-    pop edx
-    pop ecx
-    pop ebx
-    pop eax
-    ret
-
-    align 4
+align 4
 
 font_start:
     incbin "font.bin"
