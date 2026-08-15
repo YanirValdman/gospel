@@ -57,7 +57,7 @@ process_command:
 .check_about:
     mov ax,[esi]
     cmp ax,0x05D0
-    jne .unknown
+    jne .check_tanach
 
     mov ax,[esi+2]
     cmp ax,0x05D5
@@ -80,6 +80,26 @@ process_command:
     jnz .unknown
 
     call command_about
+    jmp .done
+
+.check_tanach:
+    mov ax,[esi]
+    cmp ax,0x05EA
+    jne .unknown
+
+    mov ax,[esi+2]
+    cmp ax,0x05E0
+    jne .unknown
+
+    mov ax,[esi+4]
+    cmp ax,0x05DA
+    jne .unknown
+
+    mov ax,[esi+6]
+    test ax,ax
+    jnz .unknown
+
+    call command_tanach
     jmp .done
 
 .unknown:
@@ -203,6 +223,10 @@ command_about:
     mov eax,0x05DF
     call terminal_put_char
 
+    ret
+command_tanach:
+    mov esi,tanach_data
+    call terminal_print_text
     ret
 
 draw_image:
@@ -550,6 +574,11 @@ align 4
 
 image_data:
     incbin "herev.bin"
+
+align 4
+
+tanach_data:
+    incbin "tanach.bin"
 
 align 8
 

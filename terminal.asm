@@ -155,6 +155,26 @@ terminal_put_char:
     pop eax
     ret
 
+terminal_print_text:
+    push eax
+    push esi
+
+.next:
+    movzx eax,word [esi]
+
+    test eax,eax
+    jz .done
+
+    call terminal_put_char
+
+    add esi,2
+    jmp .next
+
+.done:
+    pop esi
+    pop eax
+    ret
+
 
 redraw_terminal:
     push eax

@@ -1,0 +1,11 @@
+[bits 32]
+
+test_verse:
+    dw 0x05D1
+    dw 0x05E8
+    dw 0x05D0
+    dw 0x05E9
+    dw 0x05D9
+    dw 0x05EA
+    dw 0x000A
+    dw 0
