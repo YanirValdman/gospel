@@ -11,12 +11,17 @@ TERMINAL_HEIGHT equ 72
 
 TERMINAL_LINES  equ 9
 
-
 terminal_cursor_x:
     dd TERMINAL_RIGHT
 
 terminal_cursor_y:
     dd TERMINAL_TOP
+
+terminal_text_color:
+    dd 15
+
+shell_active:
+    dd 0
 
 
 title_text:
